@@ -7,6 +7,7 @@ import org.springframework.web.context.request.WebRequest;
 
 @ControllerAdvice
 public class WeatherAppExceptionHandler {
+	
 	@ExceptionHandler(value = { Exception.class })
 	protected ResponseEntity<Object> handleException(Exception ex, WebRequest request) {
 		return ResponseEntity.badRequest().body("Invalid Request "+ex.getMessage());
