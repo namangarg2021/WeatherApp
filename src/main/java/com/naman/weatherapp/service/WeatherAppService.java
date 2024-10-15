@@ -3,9 +3,13 @@ package com.naman.weatherapp.service;
 import com.naman.weatherapp.model.*;
 import com.naman.weatherapp.restclient.AccuWeatherRestClient;
 import com.naman.weatherapp.restclient.OpenWeatherRestClient;
+import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -17,14 +21,29 @@ public class WeatherAppService {
 	@Autowired
 	OpenWeatherRestClient openWeatherRestClient;
 	
+	private final ExecutorService executor = Executors.newFixedThreadPool(2);
+	
+	@SneakyThrows
 	public WeatherResponse getWeatherDetails(String cityName, String zipCode) {
-		AccuLocationKeyResponse accuLocationKeyResponse = accuWeatherRestClient.getLocationKey(cityName);
-		AccuWeatherInfoResponse accuWeatherInfoResponse = accuWeatherRestClient.getWeatherInfo(accuLocationKeyResponse.getAccuLocationKey());
-		
-		OpenGeocoderResponse openGeocoderResponse = openWeatherRestClient.getGeocoderDetails(zipCode);
-		OpenWeatherDetailsResponse openWeatherDetailsResponse = openWeatherRestClient.getWeatherDetails(openGeocoderResponse.getLat(), openGeocoderResponse.getLon());
-		
-		return getWeatherResponse(accuWeatherInfoResponse, openWeatherDetailsResponse);
+		System.out.println("getLocationKey started");
+		CompletableFuture<AccuLocationKeyResponse> locationKeyFuture = CompletableFuture.supplyAsync(
+				() -> accuWeatherRestClient.getLocationKey(cityName), executor);
+		System.out.println("getGeocoderDetails started");
+		CompletableFuture<OpenGeocoderResponse> geocoderFuture = CompletableFuture.supplyAsync(
+				() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor);
+		System.out.println("getWeatherInfo started");
+		CompletableFuture<AccuWeatherInfoResponse> weatherInfoFuture = locationKeyFuture.thenApply(
+				accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()));
+		System.out.println("getWeatherDetails started");
+		CompletableFuture<OpenWeatherDetailsResponse> weatherDetailsFuture = geocoderFuture.thenApply(
+				geocoderResponse -> openWeatherRestClient.getWeatherDetails(
+						geocoderResponse.getLat(), geocoderResponse.getLon()));
+		System.out.println("weatherResponseFuture started");
+		CompletableFuture<WeatherResponse> weatherResponseFuture = weatherInfoFuture.thenCombine(
+				weatherDetailsFuture, (accuWeatherInfo, openWeatherDetails) ->
+						getWeatherResponse(accuWeatherInfo, openWeatherDetails));
+		System.out.println("generating response started");
+		return weatherResponseFuture.get();
 	}
 	
 	public WeatherResponse getWeatherResponse(AccuWeatherInfoResponse accuWeatherInfo,
