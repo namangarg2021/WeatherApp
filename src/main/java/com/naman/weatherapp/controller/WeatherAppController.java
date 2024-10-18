@@ -3,6 +3,7 @@ package com.naman.weatherapp.controller;
 import com.naman.weatherapp.model.OpenGeocoderResponse;
 import com.naman.weatherapp.service.WeatherAppService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,8 +19,8 @@ public class WeatherAppController {
 	
 	@GetMapping
 	@ResponseBody
-	public OpenGeocoderResponse getWeatherDetails(@RequestParam(required = false) String cityName,
-	                                              @RequestParam(required = false) String zipCode) {
-		return weatherAppService.getWeatherDetails(cityName, zipCode);
+	public ResponseEntity<?> getWeatherDetails(@RequestParam(required = false) String cityName,
+	                                        @RequestParam(required = false) String zipCode) {
+		return ResponseEntity.ok(weatherAppService.getWeatherDetails(cityName, zipCode));
 	}
 }

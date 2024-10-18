@@ -1,18 +1,14 @@
 package com.naman.weatherapp.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OpenGeocoderResponse {
-	private String zip;
-	private String name;
+	@JsonProperty("lat")
 	private String lat;
+	@JsonProperty("lon")
 	private String lon;
-	private String country;
 }
