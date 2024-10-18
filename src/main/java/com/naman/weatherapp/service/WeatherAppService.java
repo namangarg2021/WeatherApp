@@ -25,24 +25,18 @@ public class WeatherAppService {
 	
 	@SneakyThrows
 	public WeatherResponse getWeatherDetails(String cityName, String zipCode) {
-		System.out.println("getLocationKey started");
 		CompletableFuture<AccuLocationKeyResponse> locationKeyFuture = CompletableFuture.supplyAsync(
 				() -> accuWeatherRestClient.getLocationKey(cityName), executor);
-		System.out.println("getGeocoderDetails started");
 		CompletableFuture<OpenGeocoderResponse> geocoderFuture = CompletableFuture.supplyAsync(
 				() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor);
-		System.out.println("getWeatherInfo started");
 		CompletableFuture<AccuWeatherInfoResponse> weatherInfoFuture = locationKeyFuture.thenApply(
 				accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()));
-		System.out.println("getWeatherDetails started");
 		CompletableFuture<OpenWeatherDetailsResponse> weatherDetailsFuture = geocoderFuture.thenApply(
 				geocoderResponse -> openWeatherRestClient.getWeatherDetails(
 						geocoderResponse.getLat(), geocoderResponse.getLon()));
-		System.out.println("weatherResponseFuture started");
 		CompletableFuture<WeatherResponse> weatherResponseFuture = weatherInfoFuture.thenCombine(
 				weatherDetailsFuture, (accuWeatherInfo, openWeatherDetails) ->
 						getWeatherResponse(accuWeatherInfo, openWeatherDetails));
-		System.out.println("generating response started");
 		return weatherResponseFuture.get();
 	}
 	
