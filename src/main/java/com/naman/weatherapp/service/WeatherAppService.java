@@ -25,22 +25,21 @@ public class WeatherAppService {
 	
 	@SneakyThrows
 	public WeatherResponse getWeatherDetails(String cityName, String zipCode) {
-		CompletableFuture<AccuLocationKeyResponse> locationKeyFuture = CompletableFuture.supplyAsync(
-				() -> accuWeatherRestClient.getLocationKey(cityName), executor);
-		CompletableFuture<OpenGeocoderResponse> geocoderFuture = CompletableFuture.supplyAsync(
-				() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor);
-		CompletableFuture<AccuWeatherInfoResponse> weatherInfoFuture = locationKeyFuture.thenApply(
-				accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()));
-		CompletableFuture<OpenWeatherDetailsResponse> weatherDetailsFuture = geocoderFuture.thenApply(
-				geocoderResponse -> openWeatherRestClient.getWeatherDetails(
+		CompletableFuture<AccuLocationKeyResponse> locationKeyFuture = CompletableFuture
+				.supplyAsync(() -> accuWeatherRestClient.getLocationKey(cityName), executor);
+		CompletableFuture<OpenGeocoderResponse> geocoderFuture = CompletableFuture
+				.supplyAsync(() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor);
+		CompletableFuture<AccuWeatherInfoResponse> weatherInfoFuture = locationKeyFuture
+				.thenApplyAsync(accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()));
+		CompletableFuture<OpenWeatherDetailsResponse> weatherDetailsFuture = geocoderFuture
+				.thenApplyAsync(geocoderResponse -> openWeatherRestClient.getWeatherDetails(
 						geocoderResponse.getLat(), geocoderResponse.getLon()));
-		CompletableFuture<WeatherResponse> weatherResponseFuture = weatherInfoFuture.thenCombine(
-				weatherDetailsFuture, (accuWeatherInfo, openWeatherDetails) ->
-						getWeatherResponse(accuWeatherInfo, openWeatherDetails));
+		CompletableFuture<WeatherResponse> weatherResponseFuture = weatherInfoFuture
+				.thenCombineAsync(weatherDetailsFuture, WeatherAppService::getWeatherResponse);
 		return weatherResponseFuture.get();
 	}
 	
-	public WeatherResponse getWeatherResponse(AccuWeatherInfoResponse accuWeatherInfo,
+	private static WeatherResponse getWeatherResponse(AccuWeatherInfoResponse accuWeatherInfo,
 	                                          OpenWeatherDetailsResponse openWeatherDetailsInfo) {
 		WeatherResponse response = new WeatherResponse();
 		
