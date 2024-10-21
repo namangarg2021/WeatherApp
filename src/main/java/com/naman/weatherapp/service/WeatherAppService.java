@@ -1,24 +1,19 @@
 package com.naman.weatherapp.service;
 
+import com.naman.weatherapp.exception.WeatherDetailsException;
+import com.naman.weatherapp.model.*;
+import com.naman.weatherapp.restclient.AccuWeatherRestClient;
+import com.naman.weatherapp.restclient.OpenWeatherRestClient;
+import lombok.SneakyThrows;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import com.naman.weatherapp.exception.WeatherDetailsException;
-import com.naman.weatherapp.model.AccuLocationKeyResponse;
-import com.naman.weatherapp.model.AccuWeatherInfoResponse;
-import com.naman.weatherapp.model.OpenGeocoderResponse;
-import com.naman.weatherapp.model.OpenWeatherDetailsResponse;
-import com.naman.weatherapp.model.WeatherResponse;
-import com.naman.weatherapp.restclient.AccuWeatherRestClient;
-import com.naman.weatherapp.restclient.OpenWeatherRestClient;
-
-import lombok.SneakyThrows;
 
 @Service
 public class WeatherAppService {
@@ -31,49 +26,33 @@ public class WeatherAppService {
 	private final ExecutorService executor = Executors.newFixedThreadPool(2);
 
 
-	public CompletableFuture<WeatherResponse> getWeatherDetails(String cityName, String zipCode) {
-
-		System.out.println("getLocationKey started");
+	public WeatherResponse getWeatherDetails(String cityName, String zipCode) {
 		CompletableFuture<AccuLocationKeyResponse> locationKeyFuture = CompletableFuture
-				.supplyAsync(() -> accuWeatherRestClient.getLocationKey(cityName), executor)
-				.exceptionally(ex -> {
-					System.out.println("in service "+ex.getMessage());
-					throw new WeatherDetailsException("Failed to fetch location key"+ ex);
-
-				});
-
-		System.out.println("getGeocoderDetails started");
+				.supplyAsync(() -> accuWeatherRestClient.getLocationKey(cityName), executor);
+//				.exceptionally((ex)->{
+//					System.out.println(ex.getMessage());
+//					throw  new WeatherDetailsException(ex.getMessage());
+//				});
 		CompletableFuture<OpenGeocoderResponse> geocoderFuture = CompletableFuture
-				.supplyAsync(() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor)
-				.exceptionally(ex -> {
-					throw new WeatherDetailsException("Failed to fetch geocoder details"+ ex);
-				});
-
-		System.out.println("getWeatherInfo started");
+				.supplyAsync(() -> openWeatherRestClient.getGeocoderDetails(zipCode), executor);
 		CompletableFuture<AccuWeatherInfoResponse> weatherInfoFuture = locationKeyFuture
-				.thenApply(accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()))
-				.exceptionally(ex -> {
-					throw new WeatherDetailsException("Failed to fetch weather info"+ex);
-				});
-
-		System.out.println("getWeatherDetails started");
+				.thenApplyAsync(accuLocationKey -> accuWeatherRestClient.getWeatherInfo(accuLocationKey.getAccuLocationKey()));
 		CompletableFuture<OpenWeatherDetailsResponse> weatherDetailsFuture = geocoderFuture
-				.thenApply(geocoderResponse -> openWeatherRestClient.getWeatherDetails(
-						geocoderResponse.getLat(), geocoderResponse.getLon()))
-				.exceptionally(ex -> {
-					throw new WeatherDetailsException("Failed to fetch weather details"+ ex);
-				});
+				.thenApplyAsync(geocoderResponse -> openWeatherRestClient.getWeatherDetails(
+						geocoderResponse.getLat(), geocoderResponse.getLon()));
+		CompletableFuture<WeatherResponse> weatherResponseFuture = weatherInfoFuture
+				.thenCombineAsync(weatherDetailsFuture, WeatherAppService::getWeatherResponse);
+        try {
+            return weatherResponseFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new WeatherDetailsException(e.getMessage());
+        }
+    }
 
-		System.out.println("Generating weather response...");
-		return weatherInfoFuture.thenCombine(weatherDetailsFuture,
-				(accuWeatherInfo, openWeatherDetails) ->
-						getWeatherResponse(accuWeatherInfo, openWeatherDetails)
-		);
-	}
-
-	public WeatherResponse getWeatherResponse(AccuWeatherInfoResponse accuWeatherInfo,
-											  OpenWeatherDetailsResponse openWeatherDetailsInfo) {
+	private static WeatherResponse getWeatherResponse(AccuWeatherInfoResponse accuWeatherInfo,
+													  OpenWeatherDetailsResponse openWeatherDetailsInfo) {
 		WeatherResponse response = new WeatherResponse();
+		System.out.println("getWeatherResponse started");
 
 		Supplier<WeatherResponse.Temperature> temperatureSupplier = () -> {
 			WeatherResponse.Temperature temp = new WeatherResponse.Temperature();

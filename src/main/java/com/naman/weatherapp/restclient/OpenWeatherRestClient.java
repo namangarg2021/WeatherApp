@@ -24,6 +24,7 @@ public class OpenWeatherRestClient {
 	
 	public OpenGeocoderResponse getGeocoderDetails(String zipCode) {
 		String url = "http://api.openweathermap.org/geo/1.0/zip?zip=" + zipCode+"&appid="+openWeatherApiKey;
+		System.out.println("getGeocoderDetails started");
 		
 		Mono<OpenGeocoderResponse> response = webClient.get()
 				.uri(url)
@@ -35,6 +36,8 @@ public class OpenWeatherRestClient {
 	
 	public OpenWeatherDetailsResponse getWeatherDetails(String lat, String lon) {
 		String url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat+"&lon="+lon+"&appid"+openWeatherApiKey+"&appid="+openWeatherApiKey;
+
+		System.out.println("getWeatherDetails started");
 
 		Mono<OpenWeatherDetailsResponse> response = webClient.get()
 				.uri(url)

@@ -11,4 +11,5 @@ public class WeatherDetailsException extends RuntimeException {
     public WeatherDetailsException(String message) {
         super(message);
     }
+
 }
