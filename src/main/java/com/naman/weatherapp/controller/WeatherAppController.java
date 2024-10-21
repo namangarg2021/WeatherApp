@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/weather")
 public class WeatherAppController {
+
 	
 	private final WeatherAppService weatherAppService;
+
 	
 	@Autowired
 	public WeatherAppController(WeatherAppService weatherAppService) {
