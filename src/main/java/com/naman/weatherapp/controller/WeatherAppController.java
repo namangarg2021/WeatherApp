@@ -12,6 +12,7 @@ public class WeatherAppController {
 
 	
 	private final WeatherAppService weatherAppService;
+
 	
 	@Autowired
 	public WeatherAppController(WeatherAppService weatherAppService) {
